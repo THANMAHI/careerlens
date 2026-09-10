@@ -14,7 +14,7 @@ export const AnalysisProvider = ({ children }) => {
   const [currentView, setCurrentView] = useState('chat'); // 'chat' | 'compare'
   const [error, setError] = useState(null);
 
-  // Explicit demo trigger (only called when user clicks "Try Sample Demo")
+  // Explicit demo trigger
   const runDemo = async () => {
     setIsAnalyzing(true);
     setError(null);
@@ -30,7 +30,6 @@ export const AnalysisProvider = ({ children }) => {
         
         const missingHigh = (data.missingSkills || []).filter(s => s.priority === 'HIGH').map(s => s.skill).join(', ');
 
-        // Populate initial comprehensive AI analysis message
         setMessages([
           {
             id: `msg-${Date.now()}`,
@@ -76,14 +75,30 @@ Your resume shows strong foundational alignment in core skills like **${(data.ma
         setActiveAnalysis(data);
         setPastAnalyses(prev => [data, ...prev]);
 
-        const missingHigh = (data.missingSkills || []).filter(s => s.priority === 'HIGH').map(s => s.skill).join(', ');
-        const matchedTop = (data.matchedSkills || []).slice(0, 3).map(s => s.skill).join(', ');
+        const isMulti = data.resumes && data.resumes.length > 1;
 
-        setMessages([
-          {
-            id: `msg-${Date.now()}`,
-            role: 'assistant',
-            content: `I completed analyzing your resume against the **${data.jdTitle || 'Job Description'}** requirements.
+        let greetingContent = '';
+
+        if (isMulti) {
+          const rankingsText = data.resumes.map((r, idx) => {
+            const badge = idx === 0 ? '🥇 #1' : (idx === 1 ? '🥈 #2' : (idx === 2 ? '🥉 #3' : `#${idx + 1}`));
+            return `${badge} **${r.candidateName || r.name}** (${r.name}) — ATS Score: **${r.atsScore}/100** (${r.matchLevel}) ${r.isBest ? '• **BEST MATCH**' : ''}`;
+          }).join('\n');
+
+          greetingContent = `I completed analyzing **${data.resumes.length} candidate resumes** against the **${data.jdTitle || 'Job Description'}** requirements.
+
+### 🏆 Candidate Comparative Rankings
+${rankingsText}
+
+### 💡 Winner Analysis
+**${data.resumes[0].candidateName || data.resumes[0].name}** ranked **#1** with an ATS score of **${data.resumes[0].atsScore}/100** because they demonstrated higher required-skill coverage and keyword alignment compared to ${data.resumes.slice(1).map(r => r.candidateName || r.name).join(', ')}.
+
+Review the comparative chart, candidate breakdown, and individual skill analysis below!`;
+        } else {
+          const missingHigh = (data.missingSkills || []).filter(s => s.priority === 'HIGH').map(s => s.skill).join(', ');
+          const matchedTop = (data.matchedSkills || []).slice(0, 3).map(s => s.skill).join(', ');
+
+          greetingContent = `I completed analyzing your resume against the **${data.jdTitle || 'Job Description'}** requirements.
 
 ### 📊 Executive Match Overview
 - **Candidate Name**: ${data.candidateName || 'Candidate'}
@@ -94,7 +109,14 @@ Your resume shows strong foundational alignment in core skills like **${(data.ma
 Your resume demonstrates solid background in **${matchedTop || 'your technical skills'}**. 
 ${missingHigh ? `Your highest-priority technical gap(s) to address are: **${missingHigh}**.` : 'You satisfied the major required skills listed in the job description.'}
 
-Below is your complete breakdown listing what you have, what you're missing, resume health audit, personalized roadmap, and curated video courses. Feel free to ask me any questions!`,
+Below is your complete breakdown listing what you have, what you're missing, resume health audit, personalized roadmap, and curated video courses. Feel free to ask me any questions!`;
+        }
+
+        setMessages([
+          {
+            id: `msg-${Date.now()}`,
+            role: 'assistant',
+            content: greetingContent,
             isInitialAnalysis: true,
             analysisData: data,
             timestamp: new Date().toISOString()
@@ -161,25 +183,33 @@ Below is your complete breakdown listing what you have, what you're missing, res
 
   const selectAnalysis = (analysis) => {
     setActiveAnalysis(analysis);
-    const missingHigh = (analysis.missingSkills || []).filter(s => s.priority === 'HIGH').map(s => s.skill).join(', ');
-    const matchedTop = (analysis.matchedSkills || []).slice(0, 3).map(s => s.skill).join(', ');
+    const isMulti = analysis.resumes && analysis.resumes.length > 1;
+
+    let contentStr = '';
+    if (isMulti) {
+      const rankingsText = analysis.resumes.map((r, idx) => {
+        const badge = idx === 0 ? '🥇 #1' : (idx === 1 ? '🥈 #2' : (idx === 2 ? '🥉 #3' : `#${idx + 1}`));
+        return `${badge} **${r.candidateName || r.name}** (${r.name}) — ATS Score: **${r.atsScore}/100** (${r.matchLevel}) ${r.isBest ? '• **BEST MATCH**' : ''}`;
+      }).join('\n');
+
+      contentStr = `Loaded comparative analysis for **${analysis.resumes.length} candidates** against **${analysis.jdTitle || analysis.title}**.
+
+### 🏆 Candidate Comparative Rankings
+${rankingsText}`;
+    } else {
+      contentStr = `Loaded analysis for **${analysis.jdTitle || analysis.title}**.
+
+### 📊 Executive Match Overview
+- **Candidate Name**: ${analysis.candidateName || 'Candidate'}
+- **ATS Match Score**: **${analysis.atsScore}/100** (${analysis.matchLevel})
+- **Job Readiness Score**: **${analysis.jobReadinessScore}/100**`;
+    }
 
     setMessages([
       {
         id: `msg-${Date.now()}`,
         role: 'assistant',
-        content: `Loaded analysis for **${analysis.jdTitle || analysis.title}**.
-
-### 📊 Executive Match Overview
-- **Candidate Name**: ${analysis.candidateName || 'Candidate'}
-- **ATS Match Score**: **${analysis.atsScore}/100** (${analysis.matchLevel})
-- **Job Readiness Score**: **${analysis.jobReadinessScore}/100**
-
-### 💡 Core Assessment Summary
-Candidate alignment: **${matchedTop || 'Matched Skills'}**. 
-${missingHigh ? `Primary technical gap(s): **${missingHigh}**.` : ''}
-
-Review all details below or ask me any question!`,
+        content: contentStr,
         isInitialAnalysis: true,
         analysisData: analysis,
         timestamp: new Date().toISOString()
