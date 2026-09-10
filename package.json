@@ -1,0 +1,25 @@
+{
+  "name": "career-lens-ai",
+  "version": "1.0.0",
+  "description": "Talk to your resume. Understand your gaps. Get job-ready.",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "server": "node server/server.js",
+    "client": "npm --prefix client run dev",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install"
+  },
+  "keywords": [
+    "resume",
+    "ats",
+    "ai",
+    "career",
+    "job-readiness"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
